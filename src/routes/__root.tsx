@@ -123,6 +123,8 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+import { SpeedInsights } from "@vercel/speed-insights/react";
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
@@ -130,6 +132,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
+      <SpeedInsights />
     </QueryClientProvider>
   );
 }
