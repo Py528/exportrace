@@ -81,13 +81,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "exportrace benchmarks every export format and precision for your Ultralytics YOLO model on your machine — and tells you which one to ship.",
+          "exportrace benchmarks every export backend and precision for your Ultralytics YOLO model on your machine — median FPS, p99, peak RAM, init time, and Box IoU vs FP32 — and tells you which one to ship. MIT, offline, no accounts.",
       },
       { property: "og:title", content: "exportrace — One command. Your best YOLO export config." },
       {
         property: "og:description",
         content:
-          "Stop guessing between ONNX, CoreML, and PyTorch. exportrace run model.pt gives you FPS, latency, and accuracy delta across every backend on your machine.",
+          "Stop guessing between ONNX, CoreML, and PyTorch. exportrace run yolov8n.pt measures every backend on your machine and writes a paste-able markdown report.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import heroImg from "@/assets/hero.png";
 
@@ -12,6 +11,8 @@ export const Route = createFileRoute("/")({
   }),
   component: Index,
 });
+
+const GITHUB = "https://github.com/Py528/exportrace";
 
 // ---------- Theme ----------
 type Theme = "dark" | "light";
@@ -78,10 +79,11 @@ function Index() {
       <TrustBar isDark={isDark} />
       <QuoteSection isDark={isDark} />
       <Terminal isDark={isDark} />
+      <Benchmarks isDark={isDark} />
       <Features isDark={isDark} />
       <BackendsGrid isDark={isDark} />
       <ReportPreview isDark={isDark} />
-      <CodeSnippet isDark={isDark} />
+      <CISection isDark={isDark} />
       <CTA isDark={isDark} />
       <Footer isDark={isDark} />
     </div>
@@ -112,9 +114,9 @@ function Nav({ isDark, onToggle }: { isDark: boolean; onToggle: () => void }) {
         </a>
         <nav className={`hidden md:flex items-center gap-6 text-sm ${isDark ? "text-white/70" : "text-black/70"}`}>
           <a href="#how" className="hover:opacity-100 opacity-80 transition">How it works</a>
+          <a href="#benchmarks" className="hover:opacity-100 opacity-80 transition">Benchmarks</a>
           <a href="#report" className="hover:opacity-100 opacity-80 transition">Report</a>
           <a href="#backends" className="hover:opacity-100 opacity-80 transition">Backends</a>
-          <a href="#waitlist" className="hover:opacity-100 opacity-80 transition">Waitlist</a>
         </nav>
         <div className="flex items-center gap-2">
           <button
@@ -126,10 +128,12 @@ function Nav({ isDark, onToggle }: { isDark: boolean; onToggle: () => void }) {
             {isDark ? <SunIcon /> : <MoonIcon />}
           </button>
           <a
-            href="#waitlist"
+            href={GITHUB}
+            target="_blank"
+            rel="noopener noreferrer"
             className="text-sm px-4 py-1.5 rounded-full font-medium transition hover:scale-105 bg-[#76B900] text-black hover:bg-[#85ce00]"
           >
-            Join Waitlist
+            Star on GitHub
           </a>
         </div>
       </div>
@@ -167,8 +171,8 @@ function Hero({ isDark }: { isDark: boolean }) {
         />
         <div
           className={`absolute inset-0 transition-colors duration-700 ${isDark
-              ? "bg-gradient-to-b from-[#0a0b0d] via-[#0a0b0d]/75 to-[#0a0b0d]"
-              : "bg-gradient-to-b from-[#f6f4ef] via-[#f6f4ef]/85 to-[#f6f4ef]"
+            ? "bg-gradient-to-b from-[#0a0b0d] via-[#0a0b0d]/75 to-[#0a0b0d]"
+            : "bg-gradient-to-b from-[#f6f4ef] via-[#f6f4ef]/85 to-[#f6f4ef]"
             }`}
         />
         {/* soft blobs */}
@@ -193,17 +197,27 @@ function Hero({ isDark }: { isDark: boolean }) {
         </Reveal>
 
         <Reveal delay={260}>
-          <div className="mt-10 flex flex-col items-center justify-center gap-3">
-            <div className={`w-full max-w-md p-6 rounded-2xl border backdrop-blur-md ${isDark ? "bg-black/45 border-white/10" : "bg-white/75 border-black/10"
-              }`}>
-              <WaitlistForm isDark={isDark} />
+          <div className="mt-10 flex flex-col items-center justify-center gap-4">
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <CopyCommand cmd="pip install exportrace" isDark={isDark} />
+              <CopyCommand cmd="exportrace run yolov8n.pt" isDark={isDark} />
             </div>
-            <a
-              href="#report"
-              className={`text-xs mt-3 transition hover:opacity-100 opacity-60 underline`}
-            >
-              See a sample report below
-            </a>
+            <div className="flex items-center gap-6 mt-2">
+              <a
+                href={GITHUB}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-6 py-2.5 rounded-full text-sm font-semibold bg-[#76B900] text-black hover:bg-[#85ce00] transition hover:scale-105"
+              >
+                Star on GitHub
+              </a>
+              <a
+                href="#benchmarks"
+                className={`text-sm underline underline-offset-4 hover:opacity-100 opacity-70 transition`}
+              >
+                See real benchmark tables →
+              </a>
+            </div>
           </div>
         </Reveal>
 
@@ -212,6 +226,7 @@ function Hero({ isDark }: { isDark: boolean }) {
             <span className="flex items-center gap-1.5"><Dot /> MIT licensed</span>
             <span className="flex items-center gap-1.5"><Dot /> No accounts</span>
             <span className="flex items-center gap-1.5"><Dot /> Runs offline</span>
+            <span className="hidden sm:flex items-center gap-1.5"><Dot /> Zero ML dependencies in core</span>
           </div>
         </Reveal>
       </div>
@@ -220,156 +235,6 @@ function Hero({ isDark }: { isDark: boolean }) {
 }
 
 function Dot() { return <span className="w-1 h-1 rounded-full bg-[#76B900]" />; }
-
-const joinWaitlistServerFn = createServerFn("POST", async (payload: any) => {
-  const fs = await import("node:fs");
-  const path = await import("node:path");
-  const filePath = path.join(process.cwd(), "waitlist_emails.txt");
-  const data = typeof payload === 'object' && payload !== null
-    ? (typeof payload.data === 'string' ? payload.data : JSON.stringify(payload.data || payload))
-    : String(payload);
-  fs.appendFileSync(filePath, `${data}\n`);
-  return { success: true };
-});
-
-function WaitlistForm({ isDark, align = "center" }: { isDark: boolean; align?: "center" | "left" }) {
-  const [email, setEmail] = useState("");
-  const [hardware, setHardware] = useState("");
-  const [painPoint, setPainPoint] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !email.includes("@")) return;
-
-    setLoading(true);
-    try {
-      const signupData = JSON.stringify({
-        email,
-        hardware,
-        painPoint,
-        timestamp: new Date().toISOString()
-      });
-
-      // 1. Try local server function first
-      const res = await joinWaitlistServerFn({ data: signupData });
-      if (res && res.success) {
-        setSubmitted(true);
-        return;
-      }
-      throw new Error("Local server action failed");
-    } catch (err) {
-      console.warn("Server action failed, using web3forms:", err);
-      // 2. Fallback to Web3Forms (unlimited free submissions directly to email inbox)
-      try {
-        const web3Key = import.meta.env.VITE_WEB3FORMS_KEY || "2f91df58-bfb6-455b-869f-43e60113c230";
-        const web3Response = await fetch("https://api.web3forms.com/submit", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify({
-            access_key: web3Key,
-            email: email,
-            subject: "New Exportrace Waitlist Signup",
-            message: `New subscriber email: ${email}\nHardware/OS: ${hardware}\nFrustration: ${painPoint}`,
-          }),
-        });
-
-        if (web3Response.ok) {
-          setSubmitted(true);
-          return;
-        }
-      } catch (web3Err) {
-        console.warn("Web3Forms fallback failed:", web3Err);
-      }
-
-      // 3. Last fallback: save in browser localStorage so the lead is never lost
-      const list = JSON.parse(localStorage.getItem("eb-waitlist") || "[]");
-      localStorage.setItem("eb-waitlist", JSON.stringify([...list, { email, hardware, painPoint, date: new Date().toISOString() }]));
-      setSubmitted(true);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (submitted) {
-    return (
-      <div className="flex items-center gap-2 text-emerald-400 font-medium px-5 py-3 rounded-full bg-emerald-500/10 border border-emerald-500/20 animate-fade-in shadow-lg shadow-emerald-500/10">
-        <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <span className="text-sm">You're on the waitlist! We'll email you soon. 🚀</span>
-      </div>
-    );
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className={`flex flex-col gap-4 w-full max-w-md ${align === "center" ? "mx-auto text-left" : "text-left"}`}>
-      <div>
-        <label className={`block text-xs font-semibold mb-1.5 ${isDark ? "text-white/60" : "text-black/60"}`}>
-          Email Address <span className="text-[#76B900]">*</span>
-        </label>
-        <input
-          type="email"
-          placeholder="name@company.com"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          disabled={loading}
-          className={`w-full px-4 py-2.5 rounded-xl text-sm font-sans focus:outline-none transition-all duration-300 border ${isDark
-              ? "bg-white/[0.03] border-white/10 text-white placeholder-white/30 focus:border-[#76B900] focus:ring-1 focus:ring-[#76B900]"
-              : "bg-black/[0.02] border-black/10 text-black placeholder-black/40 focus:border-[#76B900] focus:ring-1 focus:ring-[#76B900]"
-            }`}
-        />
-      </div>
-
-      <div>
-        <label className={`block text-xs font-semibold mb-1.5 ${isDark ? "text-white/60" : "text-black/60"}`}>
-          Your Target Hardware / OS Setup <span className="text-white/30">(optional)</span>
-        </label>
-        <input
-          type="text"
-          placeholder="e.g. Apple M3 Max Sonoma, Nvidia RTX 4090 Ubuntu"
-          value={hardware}
-          onChange={(e) => setHardware(e.target.value)}
-          disabled={loading}
-          className={`w-full px-4 py-2.5 rounded-xl text-sm font-sans focus:outline-none transition-all duration-300 border ${isDark
-              ? "bg-white/[0.03] border-white/10 text-white placeholder-white/30 focus:border-[#76B900] focus:ring-1 focus:ring-[#76B900]"
-              : "bg-black/[0.02] border-black/10 text-black placeholder-black/40 focus:border-[#76B900] focus:ring-1 focus:ring-[#76B900]"
-            }`}
-        />
-      </div>
-
-      <div>
-        <label className={`block text-xs font-semibold mb-1.5 ${isDark ? "text-white/60" : "text-black/60"}`}>
-          Biggest frustration when exporting models? <span className="text-white/30">(optional)</span>
-        </label>
-        <textarea
-          placeholder="e.g. CoreML conversion bugs, ONNX Runtime dependency hell..."
-          value={painPoint}
-          onChange={(e) => setPainPoint(e.target.value)}
-          disabled={loading}
-          rows={3}
-          className={`w-full px-4 py-2.5 rounded-xl text-sm font-sans focus:outline-none transition-all duration-300 border resize-none ${isDark
-              ? "bg-white/[0.03] border-white/10 text-white placeholder-white/30 focus:border-[#76B900] focus:ring-1 focus:ring-[#76B900]"
-              : "bg-black/[0.02] border-black/10 text-black placeholder-black/40 focus:border-[#76B900] focus:ring-1 focus:ring-[#76B900]"
-            }`}
-        />
-      </div>
-
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full mt-2 px-6 py-3 rounded-xl text-sm font-medium font-sans bg-[#76B900] text-black hover:bg-[#85ce00] transition-colors duration-300 cursor-pointer shadow-lg shadow-[#76B900]/20 shrink-0 font-bold disabled:opacity-50"
-      >
-        {loading ? "Joining..." : "Join Waitlist"}
-      </button>
-    </form>
-  );
-}
 
 function CopyCommand({ cmd, isDark }: { cmd: string; isDark: boolean }) {
   const [copied, setCopied] = useState(false);
@@ -385,7 +250,7 @@ function CopyCommand({ cmd, isDark }: { cmd: string; isDark: boolean }) {
     >
       <span className="text-[#76B900] font-bold">$</span>
       <span className="hidden sm:inline">{cmd}</span>
-      <span className="sm:hidden">exportrace run model.pt</span>
+      <span className="sm:hidden">{cmd.length > 22 ? cmd.slice(0, 20) + "…" : cmd}</span>
       <span className={`ml-2 px-3 py-1.5 rounded-full text-xs font-sans font-medium transition ${copied ? "bg-emerald-400 text-black" : isDark ? "bg-white text-black" : "bg-black text-white"
         }`}>
         {copied ? "copied" : "copy"}
@@ -396,12 +261,12 @@ function CopyCommand({ cmd, isDark }: { cmd: string; isDark: boolean }) {
 
 // ---------- Trust bar (marquee) ----------
 function TrustBar({ isDark }: { isDark: boolean }) {
-  const items = ["PyTorch", "ONNX Runtime", "CoreML", "CUDA", "Apple MPS", "Ultralytics", "TensorRT", "OpenVINO"];
+  const items = ["PyTorch", "ONNX Runtime", "CoreML", "Apple MPS", "Ultralytics", "YOLOv8", "YOLO11", "YOLO26", "RT-DETR", "YOLO-World"];
   const row = [...items, ...items];
   return (
     <section className={`relative py-16 px-4 border-t ${isDark ? "border-white/5" : "border-black/5"}`}>
       <p className={`text-center text-xs uppercase tracking-[0.2em] mb-8 ${isDark ? "text-white/40" : "text-black/40"}`}>
-        Benchmarks the runtimes you already use
+        Benchmarks the runtimes and models you already use
       </p>
       <div className="relative overflow-hidden max-w-6xl mx-auto">
         <div className={`pointer-events-none absolute left-0 top-0 bottom-0 w-24 z-10 bg-gradient-to-r ${isDark ? "from-[#0a0b0d]" : "from-[#f6f4ef]"} to-transparent`} />
@@ -449,16 +314,14 @@ function QuoteSection({ isDark }: { isDark: boolean }) {
   );
 }
 
-
-
-// ---------- Terminal ----------
+// ---------- Terminal (real run) ----------
 function Terminal({ isDark }: { isDark: boolean }) {
   return (
     <section id="how" className="py-20 px-4">
       <div className="max-w-4xl mx-auto">
         <Reveal>
           <div className="text-center mb-10">
-            <p className={`text-xs uppercase tracking-[0.2em] mb-3 ${isDark ? "text-white/40" : "text-black/40"}`}>Proposed Shell API (Concept)</p>
+            <p className={`text-xs uppercase tracking-[0.2em] mb-3 ${isDark ? "text-white/40" : "text-black/40"}`}>The real Shell API</p>
             <h2 className="font-serif text-3xl sm:text-5xl leading-tight tracking-tight">
               One command. <span className="italic">Every backend measured.</span>
             </h2>
@@ -471,23 +334,24 @@ function Terminal({ isDark }: { isDark: boolean }) {
               <div className="w-3 h-3 rounded-full bg-yellow-500/70" />
               <div className="w-3 h-3 rounded-full bg-green-500/70" />
               <span className="ml-3 text-xs text-white/40 font-mono">~/projects/yolo-detector</span>
-              <span className="ml-auto text-[10px] text-[#76B900] uppercase tracking-wider font-mono border border-[#76B900]/30 px-2 py-0.5 rounded font-bold">Simulated Output Concept</span>
+              <span className="ml-auto text-[10px] text-[#76B900] uppercase tracking-wider font-mono border border-[#76B900]/30 px-2 py-0.5 rounded font-bold">Real run — Apple M5 Pro</span>
             </div>
             <pre className="p-6 text-sm font-mono leading-relaxed overflow-x-auto">
               <span className="text-[#76B900] font-bold">$</span> <span className="text-white">exportrace run yolov8n.pt</span>{"\n"}
-              <span className="text-white/50">▸ detecting environment... macOS 14.5, Apple M2, 16GB{"\n"}</span>
-              <span className="text-white/50">▸ available backends: PyTorch (MPS), PyTorch (CPU), ONNX (CPU), CoreML{"\n"}</span>
+              <span className="text-white/50">exportrace v0.1.0 • macOS • Apple M5 Pro (15C, 24GB) • Power: AC{"\n"}</span>
+              <span className="text-white/50">▸ backends: 5 to run, 0 unavailable (baseline: PyTorch FP32){"\n"}</span>
               <span className="text-white/50">▸ exporting yolov8n.pt → onnx, coreml ... </span><span className="text-green-400">done{"\n"}</span>
-              <span className="text-white/50">▸ benchmarking (100 iterations, imgsz=640) ...{"\n\n"}</span>
-              <span className="text-cyan-300">┌──────────────┬───────────┬───────────┬────────┬──────────┬──────────┐{"\n"}</span>
-              <span className="text-cyan-300">│ backend      │ format    │ precision │  FPS   │ latency  │  Δ acc   │{"\n"}</span>
-              <span className="text-cyan-300">├──────────────┼───────────┼───────────┼────────┼──────────┼──────────┤{"\n"}</span>
-              <span className="text-white">│ PyTorch      │ .pt       │ FP32      │  42.1  │  23.7 ms │  0.0000  │{"\n"}</span>
-              <span className="text-white">│ PyTorch/MPS  │ .pt       │ FP16      │  118.6 │   8.4 ms │  0.0021  │{"\n"}</span>
-              <span className="text-white">│ ONNX Runtime │ .onnx     │ FP32      │  61.3  │  16.3 ms │  0.0004  │{"\n"}</span>
-              <span className="text-emerald-400 font-bold">│ CoreML       │ .mlpackage│ FP16      │  184.2 │   5.4 ms │  0.0018  │ ★{"\n"}</span>
-              <span className="text-cyan-300">└──────────────┴───────────┴───────────┴────────┴──────────┴──────────┘{"\n\n"}</span>
-              <span className="text-green-400">✓ recommendation: CoreML FP16 — 4.4× faster than baseline, Δ acc negligible{"\n"}</span>
+              <span className="text-white/50">▸ benchmarking (20 warmup, 100 timed iters, imgsz=640) ...{"\n\n"}</span>
+              <span className="text-cyan-300">┌────────────────┬──────────┬───────────────┬─────────┬────────┬─────────┬─────────┐{"\n"}</span>
+              <span className="text-cyan-300">│ backend        │ precision│ unit          │ Med FPS │ p99 ms │ Box IoU │ RSS     │{"\n"}</span>
+              <span className="text-cyan-300">├────────────────┼──────────┼───────────────┼─────────┼────────┼─────────┼─────────┤{"\n"}</span>
+              <span className="text-white">│ PyTorch        │ FP32     │ CPU           │   31.1  │  65.9  │  1.000  │  427 MB │{"\n"}</span>
+              <span className="text-emerald-400 font-bold">│ PyTorch/MPS    │ FP16     │ Apple GPU     │  182.0  │   8.2  │  0.992  │ ★ 542 MB │{"\n"}</span>
+              <span className="text-white">│ ONNX Runtime   │ FP32     │ CoreML EP     │  233.4  │   6.2  │  0.975  │  601 MB │{"\n"}</span>
+              <span className="text-white">│ CoreML         │ FP16     │ CPU+GPU+ANE   │  128.1  │  10.3  │  0.963  │  596 MB │{"\n"}</span>
+              <span className="text-white">│ ONNX Runtime   │ FP32     │ CPU (XNNPACK) │   60.3  │  27.0  │  1.000  │  569 MB │{"\n"}</span>
+              <span className="text-cyan-300">└────────────────┴──────────┴───────────────┴─────────┴────────┴─────────┴─────────┘{"\n\n"}</span>
+              <span className="text-green-400">✓ recommendation: MPS FP16 — 5.9× faster than baseline, Box IoU 0.992{"\n"}</span>
               <span className="text-white/50">▸ report written to </span><span className="text-white">benchmark_report.md</span>
             </pre>
           </div>
@@ -496,9 +360,9 @@ function Terminal({ isDark }: { isDark: boolean }) {
         {/* KPI strip */}
         <div className="mt-8 grid grid-cols-3 gap-4">
           {[
-            { k: "4.4×", v: "faster than FP32 baseline" },
-            { k: "5.4 ms", v: "per-frame latency" },
-            { k: "0.0018", v: "accuracy delta (cosine)" },
+            { k: "5.9×", v: "faster than FP32 baseline" },
+            { k: "8.2 ms", v: "p99 tail latency (E2E)" },
+            { k: "0.992", v: "Box IoU vs FP32 baseline" },
           ].map((m, i) => (
             <Reveal key={m.k} delay={i * 100}>
               <div className={`rounded-2xl p-5 border ${isDark ? "bg-white/[0.03] border-white/10" : "bg-white border-black/10"}`}>
@@ -513,15 +377,168 @@ function Terminal({ isDark }: { isDark: boolean }) {
   );
 }
 
+// ---------- Benchmarks (dynamic, from /benchmarks.json) ----------
+type BenchRow = {
+  backend: string; backendId: string; precision: string; unit: string; status: string;
+  fps?: number; p99?: number; e2e?: number; rss?: number; init?: number;
+  iou?: number | null; detail?: string;
+};
+type BenchEntry = { model: string; file: string; task: string; status: string; rows: BenchRow[] };
+type BenchData = {
+  meta: {
+    tool: string; generated: string; host: string; os: string; chip: string;
+    ramGb?: number; imgsz: number; iters: number; warmup: number; batch: number;
+    power: string; note: string;
+  };
+  results: BenchEntry[];
+};
+
+const TASK_LABELS: Record<string, string> = {
+  detect: "Detection", segment: "Segmentation", pose: "Pose",
+  classify: "Classification", obb: "Oriented (OBB)", depth: "Depth",
+};
+
+function Benchmarks({ isDark }: { isDark: boolean }) {
+  const [data, setData] = useState<BenchData | null>(null);
+  const [sel, setSel] = useState(0);
+
+  useEffect(() => {
+    fetch("/benchmarks.json")
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("no data"))))
+      .then((d: BenchData) => {
+        setData(d);
+        const first = d.results.findIndex((e) => e.rows.some((r) => r.fps));
+        setSel(Math.max(0, first));
+      })
+      .catch(() => setData(null));
+  }, []);
+
+  const entries = (data?.results ?? []).filter((e) => e.rows.some((r) => r.fps));
+  const entry = entries[sel];
+
+  return (
+    <section id="benchmarks" className={`py-24 px-4 border-t ${isDark ? "border-white/5" : "border-black/5"}`}>
+      <div className="max-w-6xl mx-auto">
+        <Reveal>
+          <div className="text-center mb-10">
+            <p className={`text-xs uppercase tracking-[0.2em] mb-3 ${isDark ? "text-white/40" : "text-black/40"}`}>
+              Real runs — not mockups
+            </p>
+            <h2 className="font-serif text-4xl sm:text-5xl tracking-tight">
+              Every model family. <span className="italic">Every backend.</span>
+            </h2>
+            {data && (
+              <p className={`mt-4 text-xs font-mono ${isDark ? "text-white/40" : "text-black/40"}`}>
+                {data.meta.host} • {data.meta.imgsz}px • {data.meta.warmup} warmup + {data.meta.iters} timed iters • generated {data.meta.generated}
+              </p>
+            )}
+          </div>
+        </Reveal>
+
+        {!data && (
+          <div className={`text-center py-16 text-sm ${isDark ? "text-white/40" : "text-black/40"}`}>
+            Loading benchmark data… Run <code className="font-mono">exportrace run model.pt</code> to generate yours.
+          </div>
+        )}
+
+        {data && entries.length > 0 && (
+          <>
+            <div className="flex flex-wrap justify-center gap-2 mb-8">
+              {entries.map((e, i) => (
+                <button
+                  key={e.model}
+                  onClick={() => setSel(i)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-mono border transition ${i === sel
+                    ? "bg-[#76B900] text-black border-[#76B900] font-bold"
+                    : isDark ? "border-white/15 text-white/60 hover:border-white/40" : "border-black/15 text-black/60 hover:border-black/40"
+                    }`}
+                >
+                  {e.model}
+                </button>
+              ))}
+            </div>
+
+            {entry && (
+              <Reveal>
+                <div className={`rounded-2xl border overflow-hidden ${isDark ? "border-white/10" : "border-black/10"}`}>
+                  <div className={`px-5 py-3 border-b flex items-center justify-between text-xs font-mono ${isDark ? "border-white/10 bg-white/[0.03] text-white/50" : "border-black/10 bg-black/[0.02] text-black/50"}`}>
+                    <span>{entry.file} • {TASK_LABELS[entry.task] ?? entry.task}</span>
+                    <span>★ = fastest valid</span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs sm:text-sm font-mono">
+                      <thead>
+                        <tr className={isDark ? "text-white/40" : "text-black/40"}>
+                          <th className="text-left px-4 py-2 font-medium">Backend</th>
+                          <th className="text-left px-2 py-2 font-medium">Prec.</th>
+                          <th className="text-left px-2 py-2 font-medium hidden md:table-cell">Unit</th>
+                          <th className="text-right px-2 py-2 font-medium">Med FPS</th>
+                          <th className="text-right px-2 py-2 font-medium">p99 ms</th>
+                          <th className="text-right px-2 py-2 font-medium hidden sm:table-cell">E2E ms</th>
+                          <th className="text-right px-2 py-2 font-medium hidden md:table-cell">RSS</th>
+                          <th className="text-right px-2 py-2 font-medium hidden md:table-cell">Init s</th>
+                          <th className="text-right px-2 py-2 font-medium">Box IoU</th>
+                          <th className="text-left px-4 py-2 font-medium">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[...entry.rows]
+                          .sort((a, b) => (b.fps ?? -1) - (a.fps ?? -1))
+                          .map((r, ri) => {
+                            const best = entry.rows.some((x) => x.fps) &&
+                              r.fps === Math.max(...entry.rows.map((x) => x.fps ?? -1)) &&
+                              (r.status === "ok");
+                            return (
+                              <tr key={ri} className={`border-t ${isDark ? "border-white/5" : "border-black/5"} ${best ? (isDark ? "bg-[#76B900]/10" : "bg-[#76B900]/10") : ""}`}>
+                                <td className={`px-4 py-2 ${best ? "text-[#76B900] font-bold" : ""}`}>{r.backend}</td>
+                                <td className="px-2 py-2">{r.precision}</td>
+                                <td className={`px-2 py-2 hidden md:table-cell ${isDark ? "text-white/50" : "text-black/50"}`}>{r.unit}</td>
+                                <td className="px-2 py-2 text-right">{r.fps?.toFixed(1) ?? "–"}</td>
+                                <td className="px-2 py-2 text-right">{r.p99?.toFixed(1) ?? "–"}</td>
+                                <td className="px-2 py-2 text-right hidden sm:table-cell">{r.e2e?.toFixed(1) ?? "–"}</td>
+                                <td className="px-2 py-2 text-right hidden md:table-cell">{r.rss?.toFixed(0) ?? "–"}</td>
+                                <td className="px-2 py-2 text-right hidden md:table-cell">{r.init?.toFixed(1) ?? "–"}</td>
+                                <td className="px-2 py-2 text-right">{r.iou != null ? r.iou.toFixed(3) : "–"}</td>
+                                <td className="px-4 py-2">
+                                  {best && <span className="text-[#76B900] font-bold">★ Best</span>}
+                                  {!best && r.status === "ok" && <span className={isDark ? "text-white/50" : "text-black/50"}>ok</span>}
+                                  {r.status === "nan_detected" && <span className="text-red-400">NaN</span>}
+                                  {!["ok", "nan_detected"].includes(r.status) && (
+                                    <span className={`${isDark ? "text-white/40" : "text-black/40"}`}>skipped</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </Reveal>
+            )}
+
+            <p className={`mt-6 text-center text-xs max-w-3xl mx-auto leading-relaxed ${isDark ? "text-white/40" : "text-black/40"}`}>
+              {data.meta.note}
+            </p>
+            <p className={`mt-2 text-center text-xs ${isDark ? "text-white/30" : "text-black/30"}`}>
+              Generated with <span className="font-mono">{data.meta.tool}</span> — one command, one paste-able report.
+            </p>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
 // ---------- Features ----------
 function Features({ isDark }: { isDark: boolean }) {
   const features = [
-    { title: "Detect your machine", body: "OS, chip, RAM, and every backend actually available — MPS, CUDA, ONNX EPs, CoreML. No config." },
-    { title: "Export & benchmark", body: "Uses Ultralytics' built-in exporter. Warm-up runs excluded. Std deviation included." },
-    { title: "Accuracy delta, not vibes", body: "Cosine similarity vs. the FP32 baseline so you know what precision actually costs you." },
-    { title: "One markdown report", body: "Machine info + full table in benchmark_report.md. Paste into a PR, an issue, or your notes." },
-    { title: "Fails gracefully", body: "No CUDA? No CoreML? Rows are skipped or marked unavailable. Never crashes on a missing backend." },
-    { title: "Consumer hardware first", body: "Your laptop, your desktop, your dev box. No Jetson, no Pi — the machine you actually work on." },
+    { title: "Detect your machine", body: "OS, chip, RAM, and every backend actually available — MPS, CoreML, ONNX EPs. Running on battery or thermally throttled? The report says so." },
+    { title: "Isolated, honest benchmarking", body: "Every backend runs in a fresh OS subprocess with a cooldown. One subprocess per backend, so no runtime pollutes the next row's memory." },
+    { title: "Box IoU, not vibes", body: "Zero config: 12 bundled scenes, FP32 baseline boxes as pseudo-Ground-Truth. Measures box drift, class flips, and dropped objects — what FP16 actually breaks." },
+    { title: "The columns that bite", body: "p99 tail latency (not just mean), peak RSS per backend, and init/compile time — the metrics that kill edge and serverless deployments." },
+    { title: "Fails gracefully", body: "No CoreML? No CUDA? Rows are skipped with a reason, never a crash. Works on transformers (RT-DETR), world models, classification heads — with speed, and '–' where box scoring doesn't apply." },
+    { title: "Ships code, not just numbers", body: "The report ends with copy-paste standalone inference code for the winning runtime — no Ultralytics wrapper at deployment time." },
   ];
   return (
     <section className="py-24 md:py-32 px-4">
@@ -557,10 +574,10 @@ function Features({ isDark }: { isDark: boolean }) {
 // ---------- Backends grid ----------
 function BackendsGrid({ isDark }: { isDark: boolean }) {
   const groups = [
-    { label: "Apple", items: ["CoreML", "PyTorch/MPS"] },
-    { label: "NVIDIA", items: ["CUDA", "TensorRT"] },
-    { label: "Cross-platform", items: ["ONNX Runtime", "PyTorch/CPU"] },
-    { label: "Intel", items: ["OpenVINO", "ONNX (DML)"] },
+    { label: "Apple — v0.1 shipping", items: [["CoreML .mlpackage", "ship"], ["PyTorch/MPS FP16", "ship"], ["ONNX CoreML EP", "ship"]] },
+    { label: "Cross-platform — v0.1", items: [["ONNX Runtime CPU", "ship"], ["PyTorch/CPU", "ship"]] },
+    { label: "NVIDIA — v0.2/v0.3", items: [["PyTorch CUDA", "soon"], ["ONNX CUDA EP", "soon"], ["TensorRT", "soon"]] },
+    { label: "Intel / AMD — plugins", items: [["OpenVINO", "soon"], ["ONNX (DML)", "soon"]] },
   ];
   return (
     <section id="backends" className="py-24 px-4">
@@ -578,10 +595,18 @@ function BackendsGrid({ isDark }: { isDark: boolean }) {
                 }`}>
                 <div className={`text-xs uppercase tracking-widest mb-4 ${isDark ? "text-white/40" : "text-black/40"}`}>{g.label}</div>
                 <div className="space-y-2">
-                  {g.items.map((it) => (
-                    <div key={it} className="flex items-center gap-2 font-serif text-lg italic">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#76B900]" />
-                      {it}
+                  {g.items.map(([it, st]) => (
+                    <div key={it} className="flex items-center justify-between gap-2 font-serif text-lg italic">
+                      <span className="flex items-center gap-2">
+                        <span className={`w-1.5 h-1.5 rounded-full ${st === "ship" ? "bg-[#76B900]" : "bg-gray-400/50"}`} />
+                        {it}
+                      </span>
+                      <span className={`text-[9px] font-sans not-italic uppercase tracking-wider px-1.5 py-0.5 rounded ${st === "ship"
+                        ? "bg-[#76B900]/20 text-[#76B900] font-bold"
+                        : isDark ? "bg-white/5 text-white/40" : "bg-black/5 text-black/40"
+                        }`}>
+                        {st === "ship" ? "v0.1" : "roadmap"}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -589,13 +614,33 @@ function BackendsGrid({ isDark }: { isDark: boolean }) {
             </Reveal>
           ))}
         </div>
+        <p className={`text-center text-xs mt-6 ${isDark ? "text-white/40" : "text-black/40"}`}>
+          v0.1 scope: Apple Silicon + Ultralytics/YOLO, on purpose. A small matrix we keep working beats a big one that's broken.
+        </p>
       </div>
     </section>
   );
 }
 
-// ---------- Report preview ----------
+// ---------- Report preview (real generated file) ----------
 function ReportPreview({ isDark }: { isDark: boolean }) {
+  const lines = [
+    ["### ⚡ exportrace v0.1.0 — yolov8n.pt (640×640, batch=1)", "hl"],
+    ["**Host:** macOS • Apple M5 Pro (15C, 24GB) • Power: AC connected", ""],
+    ["**Methodology:** 20 warmup, 100 timed iters • E2E = preprocess+inference+NMS", ""],
+    ["", ""],
+    ["| Backend | Precision | Unit | Med FPS | p99 | Peak RSS | Box IoU |", ""],
+    ["| :--- | :--- | :--- | ---: | ---: | ---: | ---: |", "dim"],
+    ["| ONNX Runtime | FP32 | CoreML EP | 233.4 | 6.2 | 601 MB | 0.975 |", ""],
+    ["| PyTorch/MPS | FP16 | Apple GPU | 182.0 | 8.2 | 542 MB | 0.992 ★ |", "hl"],
+    ["| CoreML | FP16 | CPU+GPU+ANE | 128.1 | 10.3 | 596 MB | 0.963 |", ""],
+    ["| ONNX Runtime | FP32 | CPU | 60.3 | 27.0 | 569 MB | 1.000 |", ""],
+    ["| PyTorch | FP32 | CPU | 31.1 | 65.9 | 427 MB | 1.000 (base) |", ""],
+    ["", ""],
+    ["> ✅ Winner: yolov8n.pt MPS FP16 — 5.9× faster, Box IoU 0.992, p99 8.2 ms", "hl"],
+    ["", ""],
+    ["<details><summary>Copy standalone MPS inference code</summary>", "dim"],
+  ];
   return (
     <section id="report" className="py-24 px-4">
       <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-12 items-center">
@@ -606,12 +651,12 @@ function ReportPreview({ isDark }: { isDark: boolean }) {
               Markdown you can<br /><span className="italic">paste anywhere.</span>
             </h2>
             <p className={`leading-relaxed mb-6 ${isDark ? "text-white/60" : "text-black/70"}`}>
-              Machine info at the top, full comparison table below. Drop it into a PR
-              description, a GitHub issue, your lab notebook, or your README — it renders
-              everywhere.
+              This is a real generated <code className="font-mono text-sm">benchmark_report.md</code> — from an
+              actual exportrace run on an Apple M5 Pro. Drop it into a PR description, a GitHub issue,
+              your lab notebook, or your README — it renders everywhere.
             </p>
             <ul className={`space-y-3 text-sm ${isDark ? "text-white/70" : "text-black/70"}`}>
-              {["Mean FPS + std deviation", "Latency in ms per iteration", "Accuracy delta vs FP32 baseline", "Ranked recommendation"].map(x => (
+              {["Median FPS + p99 tail latency", "E2E latency (preprocess + inference + NMS)", "Peak RSS + init/compile time per backend", "Box IoU vs FP32 baseline", "Ranked recommendation + deploy snippet"].map((x) => (
                 <li key={x} className="flex items-center gap-3">
                   <span className="w-1 h-1 rounded-full bg-[#76B900]" />{x}
                 </li>
@@ -620,20 +665,13 @@ function ReportPreview({ isDark }: { isDark: boolean }) {
           </div>
         </Reveal>
         <Reveal delay={150}>
-          <div className={`rounded-xl border p-6 font-mono text-xs leading-relaxed shadow-2xl ${isDark ? "bg-white/[0.02] border-white/10 text-white/80" : "bg-white border-black/10 text-black/80"
+          <div className={`rounded-xl border p-6 font-mono text-[11px] sm:text-xs leading-relaxed shadow-2xl ${isDark ? "bg-white/[0.02] border-white/10 text-white/80" : "bg-white border-black/10 text-black/80"
             }`}>
-            <div className={isDark ? "text-white/40" : "text-black/40"}># benchmark_report.md</div>
-            <div className="mt-4"><span className="text-[#76B900] font-bold"># Machine</span></div>
-            <div>- OS: macOS 14.5 (Sonoma)</div>
-            <div>- Chip: Apple M2 (8-core)</div>
-            <div>- RAM: 16 GB</div>
-            <div className="mt-4"><span className="text-[#76B900] font-bold">## Results — yolov8n, imgsz=640</span></div>
-            <div className={`mt-2 ${isDark ? "text-white/60" : "text-black/60"}`}>| backend | format | precision | FPS | ms | Δ acc |</div>
-            <div className={isDark ? "text-white/60" : "text-black/60"}>|---|---|---|---|---|---|</div>
-            <div>| PyTorch | .pt | FP32 | 42.1 | 23.7 | 0.0000 |</div>
-            <div>| PyTorch/MPS | .pt | FP16 | 118.6 | 8.4 | 0.0021 |</div>
-            <div>| ONNX | .onnx | FP32 | 61.3 | 16.3 | 0.0004 |</div>
-            <div className="text-[#76B900] font-bold">| CoreML | .mlpackage | FP16 | <b>184.2</b> | 5.4 | 0.0018 |</div>
+            {lines.map(([t, c], i) => (
+              <div key={i} className={c === "hl" ? "text-[#76B900] font-bold" : c === "dim" ? (isDark ? "text-white/40" : "text-black/40") : ""}>
+                {t || "\u00A0"}
+              </div>
+            ))}
           </div>
         </Reveal>
       </div>
@@ -641,34 +679,52 @@ function ReportPreview({ isDark }: { isDark: boolean }) {
   );
 }
 
-// ---------- Python snippet ----------
-function CodeSnippet({ isDark }: { isDark: boolean }) {
+// ---------- CI section ----------
+function CISection({ isDark }: { isDark: boolean }) {
   return (
     <section className="py-24 px-4">
       <div className="max-w-4xl mx-auto">
         <Reveal>
           <div className="text-center mb-10">
-            <p className={`text-xs uppercase tracking-[0.2em] mb-3 ${isDark ? "text-white/40" : "text-black/40"}`}>Python API (Concept)</p>
+            <p className={`text-xs uppercase tracking-[0.2em] mb-3 ${isDark ? "text-white/40" : "text-black/40"}`}>CI-ready</p>
             <h2 className="font-serif text-3xl sm:text-5xl tracking-tight">
-              Or wire it into CI. <span className="italic">Three lines.</span>
+              Catch broken exports in the pull request.
             </h2>
           </div>
         </Reveal>
         <Reveal delay={100}>
           <div className="rounded-2xl border border-white/10 bg-black/80 overflow-hidden shadow-2xl text-white">
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
-              <span className="text-xs font-mono text-white/40">bench.py</span>
-              <span className="text-[10px] text-[#76B900] uppercase tracking-wider font-mono border border-[#76B900]/30 px-2 py-0.5 rounded font-bold">Concept Mockup</span>
+              <span className="text-xs font-mono text-white/40">.github/workflows/export-check.yml</span>
+              <span className="text-[10px] text-[#76B900] uppercase tracking-wider font-mono border border-[#76B900]/30 px-2 py-0.5 rounded font-bold">v0.2 preview</span>
             </div>
             <pre className="p-6 text-sm font-mono leading-relaxed overflow-x-auto">
-              <span className="text-pink-400">from</span> <span className="text-cyan-300">exportrace</span> <span className="text-pink-400">import</span> benchmark{"\n\n"}
-              report = benchmark(<span className="text-emerald-400">"yolov8n.pt"</span>, imgsz=<span className="text-emerald-400">640</span>, iters=<span className="text-emerald-400">100</span>){"\n"}
-              report.save(<span className="text-emerald-400">"benchmark_report.md"</span>){"\n\n"}
-              <span className="text-white/50"># Fail CI if the best backend can't hit 60 FPS</span>{"\n"}
-              <span className="text-pink-400">assert</span> report.best.fps &gt; <span className="text-emerald-400">60</span>, report.summary()
+              <span className="text-pink-400">name</span>: export-regression{"\n"}
+              <span className="text-pink-400">on</span>: [pull_request]{"\n\n"}
+              <span className="text-white/50"># Runs in every PR: ONNX ops load? FP16 NaN? Boxes drift?</span>{"\n"}
+              <span className="text-white/50"># FPS gates only on self-hosted hardware runners — shared</span>{"\n"}
+              <span className="text-white/50"># runners have no GPU and noisy variance. We won't market gates that flake.</span>{"\n"}
+              - <span className="text-pink-400">uses</span>: <span className="text-cyan-300">exportrace/action@v1</span>{"\n"}
+              &nbsp;&nbsp;<span className="text-pink-400">with</span>:{"\n"}
+              &nbsp;&nbsp;&nbsp;&nbsp;model: yolov8n.pt{"\n"}
+              &nbsp;&nbsp;&nbsp;&nbsp;<span className="text-pink-400">fail-under-iou</span>: <span className="text-emerald-400">0.95</span>
             </pre>
           </div>
         </Reveal>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8">
+          {[
+            { k: "Δ IoU / NaN", v: "accuracy drift on every PR, standard runners, no GPU needed" },
+            { k: "Air-gapped", v: "runs with zero network — built for enterprise CI" },
+            { k: "results.json", v: "machine-readable output for your own dashboards" },
+          ].map((m, i) => (
+            <Reveal key={m.k} delay={i * 100}>
+              <div className={`rounded-2xl p-5 border ${isDark ? "bg-white/[0.03] border-white/10" : "bg-white border-black/10"}`}>
+                <div className="font-serif text-xl text-[#76B900] font-bold">{m.k}</div>
+                <div className={`mt-1 text-xs ${isDark ? "text-white/60" : "text-black/60"}`}>{m.v}</div>
+              </div>
+            </Reveal>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -677,25 +733,34 @@ function CodeSnippet({ isDark }: { isDark: boolean }) {
 // ---------- CTA ----------
 function CTA({ isDark }: { isDark: boolean }) {
   return (
-    <section id="waitlist" className="relative py-32 px-4 overflow-hidden">
+    <section id="get-started" className="relative py-32 px-4 overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] rounded-full bg-[#76B900]/15 blur-3xl" />
       </div>
       <div className="relative max-w-3xl mx-auto text-center">
         <Reveal>
           <h2 className="font-serif text-5xl sm:text-7xl leading-tight tracking-tight mb-8">
-            Get early access.<br />
-            <span className="italic text-[#76B900] font-bold">Join the waitlist.</span>
+            Your machine is the<br />
+            <span className="italic text-[#76B900] font-bold">test bench.</span>
           </h2>
         </Reveal>
         <Reveal delay={100}>
           <p className={`mb-10 text-lg ${isDark ? "text-white/60" : "text-black/60"}`}>
-            Be the first to benchmark your model exports and find the ultimate configuration automatically. Launching soon.
+            It's free, it's MIT, it runs offline, and it needs no accounts.
+            Your first <code className="font-mono text-sm">benchmark_report.md</code> is two commands away.
           </p>
         </Reveal>
         <Reveal delay={200}>
-          <div className="flex justify-center">
-            <WaitlistForm isDark={isDark} />
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <CopyCommand cmd="pip install exportrace" isDark={isDark} />
+            <a
+              href={GITHUB}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-8 py-3 rounded-full text-sm font-semibold bg-[#76B900] text-black hover:bg-[#85ce00] transition hover:scale-105"
+            >
+              Star on GitHub
+            </a>
           </div>
         </Reveal>
       </div>
@@ -735,7 +800,7 @@ function Footer({ isDark }: { isDark: boolean }) {
           </div>
         </div>
         <div className="flex gap-6">
-          <a href="https://github.com/Py528/exportrace" target="_blank" rel="noopener noreferrer" className="hover:opacity-100 opacity-70">GitHub</a>
+          <a href={GITHUB} target="_blank" rel="noopener noreferrer" className="hover:opacity-100 opacity-70">GitHub</a>
         </div>
       </div>
     </footer>
