@@ -2,7 +2,7 @@
   "meta": {
     "tool": "exportrace 0.1.0",
     "generated": "2026-11-12",
-    "host": "macOS 26.6.2 \u2022 Apple M5 Pro (15C, 24.0GB) \u2022 Power: Battery",
+    "host": "MacBook Pro (Mac17,9) \u2022 macOS 26.6.2 \u2022 Apple M5 Pro (15C, 24.0GB) \u2022 Power: AC connected",
     "os": "macOS 26.6.2",
     "chip": "Apple M5 Pro",
     "ramGb": 24.0,
@@ -11,7 +11,8 @@
     "warmup": 10,
     "batch": 1,
     "power": "AC connected",
-    "note": "Real runs. Median FPS + p99 from E2E (preprocess+inference+NMS). Box IoU = consistency vs PyTorch FP32 baseline on 12 bundled scenes; '\u2013' where the model's output head isn't box-decodable (classify/depth/end-to-end/transformer heads)."
+    "note": "Real runs. Median FPS + p99 from E2E (preprocess+inference+NMS). Box IoU = consistency vs PyTorch FP32 baseline on 12 bundled scenes; '\u2013' where the model's output head isn't box-decodable (classify/depth/end-to-end/transformer heads).",
+    "machine": "MacBook Pro (Mac17,9)"
   },
   "results": [
     {

@@ -6,7 +6,7 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-const GITHUB = "https://github.com/Py528/exportrace";
+const GITHUB = "https://github.com/Py528/exportrace-cli";
 
 // ---------- Theme ----------
 type Theme = "dark" | "light";
@@ -382,8 +382,8 @@ type BenchEntry = { model: string; file: string; task: string; status: string; r
 type BenchData = {
   meta: {
     tool: string; generated: string; host: string; os: string; chip: string;
-    ramGb?: number; imgsz: number; iters: number; warmup: number; batch: number;
-    power: string; note: string;
+    machine?: string; ramGb?: number; imgsz: number; iters: number; warmup: number;
+    batch: number; power: string; note: string;
   };
   results: BenchEntry[];
 };
@@ -393,9 +393,26 @@ const TASK_LABELS: Record<string, string> = {
   classify: "Classification", obb: "Oriented (OBB)", depth: "Depth",
 };
 
+// Human explanations of what each runtime unit actually runs on.
+const UNIT_WHAT: Record<string, string> = {
+  "CPU": "CPU only — no GPU used",
+  "CPU (XNNPACK)": "CPU, ARM-optimized kernels",
+  "Apple GPU": "Apple GPU (Metal)",
+  "CoreML EP": "Apple Neural Engine + GPU, via ONNX Runtime",
+  "CPU+GPU+ANE": "Native CoreML (Neural Engine + GPU)",
+};
+
+function qualityChip(iou: number | null | undefined, isDark: boolean) {
+  if (iou == null) return { label: "—", cls: isDark ? "text-white/40" : "text-black/40" };
+  if (iou >= 0.98) return { label: `${(iou * 100).toFixed(1)}% match`, cls: "text-emerald-400" };
+  if (iou >= 0.95) return { label: `${(iou * 100).toFixed(1)}% match`, cls: "text-yellow-400" };
+  return { label: `${(iou * 100).toFixed(0)}% — drift`, cls: "text-orange-400" };
+}
+
 function Benchmarks({ isDark }: { isDark: boolean }) {
   const [data, setData] = useState<BenchData | null>(null);
   const [sel, setSel] = useState(0);
+  const [showRaw, setShowRaw] = useState(false);
 
   useEffect(() => {
     fetch("/benchmarks.json")
@@ -410,25 +427,65 @@ function Benchmarks({ isDark }: { isDark: boolean }) {
 
   const entries = (data?.results ?? []).filter((e) => e.rows.some((r) => r.fps));
   const entry = entries[sel];
+  const ok = entry ? [...entry.rows.filter((r) => r.fps)].sort((a, b) => (b.fps ?? 0) - (a.fps ?? 0)) : [];
+  const dead = entry ? entry.rows.filter((r) => !r.fps) : [];
+  const maxFps = ok.length ? ok[0].fps! : 1;
+  // Baseline for the "×" multiplier: the plain PyTorch CPU FP32 run, else slowest.
+  const base = ok.find((r) => r.backendId === "torch-cpu") ?? ok[ok.length - 1];
+  const baseFps = base?.fps ?? 1;
+  const win = ok[0];
+  const meta = data?.meta;
+
+  const card = `rounded-2xl border ${isDark ? "border-white/10 bg-white/[0.03]" : "border-black/10 bg-white"}`;
 
   return (
     <section id="benchmarks" className={`py-24 px-4 border-t ${isDark ? "border-white/5" : "border-black/5"}`}>
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <Reveal>
           <div className="text-center mb-10">
             <p className={`text-xs uppercase tracking-[0.2em] mb-3 ${isDark ? "text-white/40" : "text-black/40"}`}>
-              Real runs — not mockups
+              Real results — nothing simulated
             </p>
             <h2 className="font-serif text-4xl sm:text-5xl tracking-tight">
-              Every model family. <span className="italic">Every backend.</span>
+              The race, <span className="italic">on real hardware.</span>
             </h2>
-            {data && (
-              <p className={`mt-4 text-xs font-mono ${isDark ? "text-white/40" : "text-black/40"}`}>
-                {data.meta.host} • {entries.length} models × 5 backends • {data.meta.imgsz}px • {data.meta.warmup} warmup + {data.meta.iters} timed iters • {data.meta.power} • {data.meta.generated}
-              </p>
-            )}
+            <p className={`mt-4 text-sm max-w-2xl mx-auto ${isDark ? "text-white/50" : "text-black/50"}`}>
+              Every export backend raced on the machine below. Longer bar = more frames per second.
+            </p>
           </div>
         </Reveal>
+
+        {/* The test bench: exactly which machine produced these numbers */}
+        {meta && (
+          <Reveal delay={80}>
+            <div className={`${card} px-6 py-5 mb-8 flex flex-wrap items-center gap-x-6 gap-y-2`}>
+              <div className="flex items-center gap-3">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#76B900" strokeWidth="1.6" strokeLinecap="round">
+                  <rect x="2" y="4" width="20" height="13" rx="2" /><path d="M8 21h8M12 17v4" />
+                </svg>
+                <div>
+                  <div className="font-semibold text-sm">
+                    {meta.machine || "Desktop"} — {meta.chip}
+                  </div>
+                  <div className={`text-xs ${isDark ? "text-white/40" : "text-black/40"}`}>
+                    {meta.os} • {meta.ramGb ? `${meta.ramGb} GB RAM` : ""} • tested on {meta.generated}
+                  </div>
+                </div>
+              </div>
+              <div className={`flex-1 flex flex-wrap justify-end gap-2 text-[11px] font-mono ${isDark ? "text-white/50" : "text-black/50"}`}>
+                {[
+                  `${entries.length} models × 5 backends`,
+                  `${meta.imgsz}×${meta.imgsz}px`,
+                  `batch ${meta.batch}`,
+                  `${meta.warmup} warmup + ${meta.iters} timed runs`,
+                  meta.power,
+                ].map((t) => (
+                  <span key={t} className={`px-2 py-1 rounded-full border ${isDark ? "border-white/10" : "border-black/10"}`}>{t}</span>
+                ))}
+              </div>
+            </div>
+          </Reveal>
+        )}
 
         {!data && (
           <div className={`text-center py-16 text-sm ${isDark ? "text-white/40" : "text-black/40"}`}>
@@ -436,13 +493,14 @@ function Benchmarks({ isDark }: { isDark: boolean }) {
           </div>
         )}
 
-        {data && entries.length > 0 && (
+        {data && entries.length > 0 && entry && (
           <>
+            {/* Model picker */}
             <div className="flex flex-wrap justify-center gap-2 mb-8">
               {entries.map((e, i) => (
                 <button
                   key={e.model}
-                  onClick={() => setSel(i)}
+                  onClick={() => { setSel(i); setShowRaw(false); }}
                   className={`px-3 py-1.5 rounded-full text-xs font-mono border transition ${i === sel
                     ? "bg-[#76B900] text-black border-[#76B900] font-bold"
                     : isDark ? "border-white/15 text-white/60 hover:border-white/40" : "border-black/15 text-black/60 hover:border-black/40"
@@ -453,70 +511,169 @@ function Benchmarks({ isDark }: { isDark: boolean }) {
               ))}
             </div>
 
-            {entry && (
-              <Reveal>
-                <div className={`rounded-2xl border overflow-hidden ${isDark ? "border-white/10" : "border-black/10"}`}>
-                  <div className={`px-5 py-3 border-b flex items-center justify-between text-xs font-mono ${isDark ? "border-white/10 bg-white/[0.03] text-white/50" : "border-black/10 bg-black/[0.02] text-black/50"}`}>
-                    <span>{entry.file} • {TASK_LABELS[entry.task] ?? entry.task}</span>
-                    <span>★ = fastest valid</span>
+            {/* Winner spotlight */}
+            <Reveal>
+              <div className={`${card} p-6 md:p-8 mb-6`}>
+                <div className="flex flex-wrap items-start justify-between gap-6">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-[#76B900] font-bold mb-2">
+                      ★ Fastest for {entry.model} ({TASK_LABELS[entry.task] ?? entry.task})
+                    </p>
+                    <div className="font-serif text-3xl md:text-5xl leading-tight">
+                      {win.backend} <span className="opacity-60 text-xl align-middle">{win.precision}</span>
+                    </div>
+                    <p className={`mt-2 text-sm ${isDark ? "text-white/60" : "text-black/60"}`}>
+                      {UNIT_WHAT[win.unit] ?? win.unit}
+                    </p>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs sm:text-sm font-mono">
-                      <thead>
-                        <tr className={isDark ? "text-white/40" : "text-black/40"}>
-                          <th className="text-left px-4 py-2 font-medium">Backend</th>
-                          <th className="text-left px-2 py-2 font-medium">Prec.</th>
-                          <th className="text-left px-2 py-2 font-medium hidden md:table-cell">Unit</th>
-                          <th className="text-right px-2 py-2 font-medium">Med FPS</th>
-                          <th className="text-right px-2 py-2 font-medium">p99 ms</th>
-                          <th className="text-right px-2 py-2 font-medium hidden sm:table-cell">E2E ms</th>
-                          <th className="text-right px-2 py-2 font-medium hidden md:table-cell">RSS</th>
-                          <th className="text-right px-2 py-2 font-medium hidden md:table-cell">Init s</th>
-                          <th className="text-right px-2 py-2 font-medium">Box IoU</th>
-                          <th className="text-left px-4 py-2 font-medium">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {[...entry.rows]
-                          .sort((a, b) => (b.fps ?? -1) - (a.fps ?? -1))
-                          .map((r, ri) => {
-                            const best = entry.rows.some((x) => x.fps) &&
-                              r.fps === Math.max(...entry.rows.map((x) => x.fps ?? -1)) &&
-                              (r.status === "ok");
-                            return (
-                              <tr key={ri} className={`border-t ${isDark ? "border-white/5" : "border-black/5"} ${best ? (isDark ? "bg-[#76B900]/10" : "bg-[#76B900]/10") : ""}`}>
-                                <td className={`px-4 py-2 ${best ? "text-[#76B900] font-bold" : ""}`}>{r.backend}</td>
-                                <td className="px-2 py-2">{r.precision}</td>
-                                <td className={`px-2 py-2 hidden md:table-cell ${isDark ? "text-white/50" : "text-black/50"}`}>{r.unit}</td>
-                                <td className="px-2 py-2 text-right">{r.fps?.toFixed(1) ?? "–"}</td>
-                                <td className="px-2 py-2 text-right">{r.p99?.toFixed(1) ?? "–"}</td>
-                                <td className="px-2 py-2 text-right hidden sm:table-cell">{r.e2e?.toFixed(1) ?? "–"}</td>
-                                <td className="px-2 py-2 text-right hidden md:table-cell">{r.rss?.toFixed(0) ?? "–"}</td>
-                                <td className="px-2 py-2 text-right hidden md:table-cell">{r.init?.toFixed(1) ?? "–"}</td>
-                                <td className="px-2 py-2 text-right">{r.iou != null ? r.iou.toFixed(3) : "–"}</td>
-                                <td className="px-4 py-2">
-                                  {best && <span className="text-[#76B900] font-bold">★ Best</span>}
-                                  {!best && r.status === "ok" && <span className={isDark ? "text-white/50" : "text-black/50"}>ok</span>}
-                                  {r.status === "nan_detected" && <span className="text-red-400">NaN</span>}
-                                  {!["ok", "nan_detected"].includes(r.status) && (
-                                    <span className={`${isDark ? "text-white/40" : "text-black/40"}`}>skipped</span>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
+                  <div className="text-right">
+                    <div className="font-serif text-5xl md:text-6xl text-[#76B900] font-bold leading-none">
+                      {win.fps!.toFixed(0)}
+                    </div>
+                    <div className={`text-xs uppercase tracking-widest mt-1 ${isDark ? "text-white/50" : "text-black/50"}`}>
+                      frames / sec
+                    </div>
+                    {base && win !== base && (
+                      <div className="mt-3 inline-block px-3 py-1 rounded-full bg-[#76B900]/15 text-[#76B900] text-sm font-bold border border-[#76B900]/30">
+                        {(win.fps! / baseFps).toFixed(1)}× faster than CPU
+                      </div>
+                    )}
                   </div>
                 </div>
-              </Reveal>
+                {/* plain-language metric strip */}
+                <div className={`mt-6 pt-5 border-t grid grid-cols-2 md:grid-cols-4 gap-4 text-sm ${isDark ? "border-white/10" : "border-black/10"}`}>
+                  {[
+                    { k: "Worst frame (p99)", v: `${win.p99!.toFixed(1)} ms`, h: "time of the slowest 1-in-100 frames — smoothness matters for live video" },
+                    { k: "Box accuracy", v: win.iou != null ? `${(win.iou * 100).toFixed(1)}%` : "—", h: "how identical its detection boxes are to PyTorch's (100% = same boxes)" },
+                    { k: "Memory used", v: win.rss ? `${win.rss!.toFixed(0)} MB` : "—", h: "peak RAM while running — matters on small devices and servers" },
+                    { k: "Startup", v: win.init ? `${win.init!.toFixed(1)} s` : "—", h: "time to load/compile the model before the first frame" },
+                  ].map((m) => (
+                    <div key={m.k} title={m.h}>
+                      <div className={`text-xs ${isDark ? "text-white/40" : "text-black/40"}`}>{m.k}</div>
+                      <div className="font-semibold mt-0.5">{m.v}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Reveal>
+
+            {/* The race: one bar per backend */}
+            <Reveal delay={100}>
+              <div className={`${card} p-6 md:p-8`}>
+                <div className="space-y-5">
+                  {ok.map((r, i) => {
+                    const pct = Math.max(4, ((r.fps ?? 0) / maxFps) * 100);
+                    const isWin = i === 0;
+                    const q = qualityChip(r.iou, isDark);
+                    return (
+                      <div key={`${r.backendId}-${i}`}>
+                        <div className="flex items-baseline justify-between gap-3 mb-1.5">
+                          <div className="flex items-baseline gap-2 min-w-0">
+                            <span className={`text-xs font-mono w-5 ${isDark ? "text-white/30" : "text-black/30"}`}>#{i + 1}</span>
+                            <span className={`font-semibold truncate ${isWin ? "text-[#76B900]" : ""}`}>
+                              {r.backend} <span className="font-normal opacity-60">{r.precision}</span>
+                            </span>
+                            <span className={`text-xs truncate hidden sm:inline ${isDark ? "text-white/40" : "text-black/40"}`}>
+                              — {UNIT_WHAT[r.unit] ?? r.unit}
+                            </span>
+                          </div>
+                          <div className="flex items-baseline gap-2 shrink-0">
+                            <span className={`font-mono ${isWin ? "text-[#76B900] font-bold" : ""}`}>{r.fps!.toFixed(0)} FPS</span>
+                            {base && r !== base && (
+                              <span className={`text-xs font-mono ${isDark ? "text-white/40" : "text-black/40"}`}>
+                                {(r.fps! / baseFps).toFixed(1)}×
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className={`h-3 rounded-full overflow-hidden ${isDark ? "bg-white/[0.06]" : "bg-black/[0.06]"}`}>
+                          <div
+                            className={`h-full rounded-full ${isWin ? "bg-[#76B900]" : isDark ? "bg-white/25" : "bg-black/25"}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <div className={`mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-[11px] font-mono ${isDark ? "text-white/40" : "text-black/40"}`}>
+                          <span>p99 {r.p99!.toFixed(1)} ms</span>
+                          <span>E2E {r.e2e!.toFixed(1)} ms</span>
+                          {r.rss != null && <span>{r.rss.toFixed(0)} MB RAM</span>}
+                          {r.init != null && <span>init {r.init.toFixed(1)}s</span>}
+                          <span className={q.cls}>boxes {r.iou != null ? q.label : "n/a (not a box model)"}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {dead.length > 0 && (
+                  <div className={`mt-5 pt-4 border-t ${isDark ? "border-white/10" : "border-black/10"}`}>
+                    {dead.map((r, i) => (
+                      <div key={i} className={`text-[11px] font-mono ${isDark ? "text-white/30" : "text-black/30"}`}>
+                        {r.backend} {r.precision} ({r.unit}) — skipped: {(r.detail || r.status).slice(0, 120)}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Reveal>
+
+            {/* Plain-language legend */}
+            <p className={`mt-5 text-center text-[11px] leading-relaxed max-w-3xl mx-auto ${isDark ? "text-white/35" : "text-black/35"}`}>
+              <b>FPS</b> = frames per second, higher is faster • <b>×</b> = speedup over the plain PyTorch CPU run (the baseline)
+              • <b>p99</b> = the worst-case frame, real-world smoothness • <b>boxes</b> = agreement of detection boxes with the
+              PyTorch baseline (100% = identical boxes; lower = quantization changed detections)
+            </p>
+
+            {/* Raw expert table, collapsed */}
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => setShowRaw(!showRaw)}
+                className={`text-xs underline underline-offset-4 ${isDark ? "text-white/40" : "text-black/40"}`}
+              >
+                {showRaw ? "Hide raw data" : "View raw data (for experts)"}
+              </button>
+            </div>
+            {showRaw && (
+              <div className={`mt-4 rounded-2xl border overflow-hidden ${isDark ? "border-white/10" : "border-black/10"}`}>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs sm:text-sm font-mono">
+                    <thead>
+                      <tr className={isDark ? "text-white/40" : "text-black/40"}>
+                        <th className="text-left px-4 py-2 font-medium">Backend</th>
+                        <th className="text-left px-2 py-2 font-medium">Prec.</th>
+                        <th className="text-left px-2 py-2 font-medium hidden md:table-cell">Unit</th>
+                        <th className="text-right px-2 py-2 font-medium">Med FPS</th>
+                        <th className="text-right px-2 py-2 font-medium">p99 ms</th>
+                        <th className="text-right px-2 py-2 font-medium hidden sm:table-cell">E2E ms</th>
+                        <th className="text-right px-2 py-2 font-medium hidden md:table-cell">RSS</th>
+                        <th className="text-right px-2 py-2 font-medium hidden md:table-cell">Init s</th>
+                        <th className="text-right px-2 py-2 font-medium">Box IoU</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...entry.rows].sort((a, b) => (b.fps ?? -1) - (a.fps ?? -1)).map((r, ri) => (
+                        <tr key={ri} className={`border-t ${isDark ? "border-white/5" : "border-black/5"} ${r === win ? "bg-[#76B900]/10" : ""}`}>
+                          <td className={`px-4 py-2 ${r === win ? "text-[#76B900] font-bold" : ""}`}>{r.backend}</td>
+                          <td className="px-2 py-2">{r.precision}</td>
+                          <td className={`px-2 py-2 hidden md:table-cell ${isDark ? "text-white/50" : "text-black/50"}`}>{r.unit}</td>
+                          <td className="px-2 py-2 text-right">{r.fps?.toFixed(1) ?? "–"}</td>
+                          <td className="px-2 py-2 text-right">{r.p99?.toFixed(1) ?? "–"}</td>
+                          <td className="px-2 py-2 text-right hidden sm:table-cell">{r.e2e?.toFixed(1) ?? "–"}</td>
+                          <td className="px-2 py-2 text-right hidden md:table-cell">{r.rss?.toFixed(0) ?? "–"}</td>
+                          <td className="px-2 py-2 text-right hidden md:table-cell">{r.init?.toFixed(1) ?? "–"}</td>
+                          <td className="px-2 py-2 text-right">{r.iou != null ? r.iou.toFixed(3) : "–"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             )}
 
             <p className={`mt-6 text-center text-xs max-w-3xl mx-auto leading-relaxed ${isDark ? "text-white/40" : "text-black/40"}`}>
-              {data.meta.note}
+              {meta?.note}
             </p>
             <p className={`mt-2 text-center text-xs ${isDark ? "text-white/30" : "text-black/30"}`}>
-              Generated with <span className="font-mono">{data.meta.tool}</span> — one command, one paste-able report.
+              Generated with <span className="font-mono">{meta?.tool}</span> — one command, one paste-able report.
             </p>
           </>
         )}
