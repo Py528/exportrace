@@ -33,3 +33,5 @@ dist-ssr
 
 # nested standalone repo (the CLI tool)
 exportrace-cli/
+.vercel
+.env*
