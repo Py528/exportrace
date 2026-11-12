@@ -328,24 +328,25 @@ function Terminal({ isDark }: { isDark: boolean }) {
               <div className="w-3 h-3 rounded-full bg-yellow-500/70" />
               <div className="w-3 h-3 rounded-full bg-green-500/70" />
               <span className="ml-3 text-xs text-white/40 font-mono">~/projects/yolo-detector</span>
-              <span className="ml-auto text-[10px] text-[#76B900] uppercase tracking-wider font-mono border border-[#76B900]/30 px-2 py-0.5 rounded font-bold">Real run — Apple M5 Pro</span>
+              <span className="ml-auto text-[10px] text-[#76B900] uppercase tracking-wider font-mono border border-[#76B900]/30 px-2 py-0.5 rounded font-bold">Real run — Apple M5 Pro · AC power</span>
             </div>
             <pre className="p-6 text-sm font-mono leading-relaxed overflow-x-auto">
               <span className="text-[#76B900] font-bold">$</span> <span className="text-white">exportrace run yolov8n.pt</span>{"\n"}
-              <span className="text-white/50">exportrace v0.1.0 • macOS • Apple M5 Pro (15C, 24GB) • Power: AC{"\n"}</span>
+              <span className="text-white/50">exportrace v0.1.0 • macOS • Apple M5 Pro (15C, 24GB) • Power: AC connected{"\n"}</span>
               <span className="text-white/50">▸ backends: 5 to run, 0 unavailable (baseline: PyTorch FP32){"\n"}</span>
               <span className="text-white/50">▸ exporting yolov8n.pt → onnx, coreml ... </span><span className="text-green-400">done{"\n"}</span>
-              <span className="text-white/50">▸ benchmarking (20 warmup, 100 timed iters, imgsz=640) ...{"\n\n"}</span>
+              <span className="text-white/50">▸ benchmarking (10 warmup, 50 timed iters, imgsz=640) ...{"\n\n"}</span>
               <span className="text-cyan-300">┌────────────────┬──────────┬───────────────┬─────────┬────────┬─────────┬─────────┐{"\n"}</span>
               <span className="text-cyan-300">│ backend        │ precision│ unit          │ Med FPS │ p99 ms │ Box IoU │ RSS     │{"\n"}</span>
               <span className="text-cyan-300">├────────────────┼──────────┼───────────────┼─────────┼────────┼─────────┼─────────┤{"\n"}</span>
-              <span className="text-white">│ PyTorch        │ FP32     │ CPU           │   31.1  │  65.9  │  1.000  │  427 MB │{"\n"}</span>
-              <span className="text-emerald-400 font-bold">│ PyTorch/MPS    │ FP16     │ Apple GPU     │  182.0  │   8.2  │  0.992  │ ★ 542 MB │{"\n"}</span>
-              <span className="text-white">│ ONNX Runtime   │ FP32     │ CoreML EP     │  233.4  │   6.2  │  0.975  │  601 MB │{"\n"}</span>
-              <span className="text-white">│ CoreML         │ FP16     │ CPU+GPU+ANE   │  128.1  │  10.3  │  0.963  │  596 MB │{"\n"}</span>
-              <span className="text-white">│ ONNX Runtime   │ FP32     │ CPU (XNNPACK) │   60.3  │  27.0  │  1.000  │  569 MB │{"\n"}</span>
+              <span className="text-white">│ PyTorch        │ FP32     │ CPU           │   41.2  │  26.6  │  1.000  │  416 MB │{"\n"}</span>
+              <span className="text-white">│ ONNX Runtime   │ FP32     │ CoreML EP     │  273.8  │   4.9  │  0.975  │ ★ 599 MB │{"\n"}</span>
+              <span className="text-white">│ PyTorch/MPS    │ FP16     │ Apple GPU     │  268.3  │   4.5  │  0.992  │  537 MB │{"\n"}</span>
+              <span className="text-white">│ CoreML         │ FP16     │ CPU+GPU+ANE   │  150.4  │   7.6  │  0.963  │  611 MB │{"\n"}</span>
+              <span className="text-white">│ ONNX Runtime   │ FP32     │ CPU (XNNPACK) │   71.8  │  15.5  │  1.000  │  590 MB │{"\n"}</span>
               <span className="text-cyan-300">└────────────────┴──────────┴───────────────┴─────────┴────────┴─────────┴─────────┘{"\n\n"}</span>
-              <span className="text-green-400">✓ recommendation: MPS FP16 — 5.9× faster than baseline, Box IoU 0.992{"\n"}</span>
+              <span className="text-green-400">✓ recommendation: CoreML EP — 6.6× faster than baseline, Box IoU 0.975{"\n"}</span>
+              <span className="text-white/50">  PyTorch/MPS FP16 is statistically tied (268.3 FPS, IoU 0.992){'\n'}</span>
               <span className="text-white/50">▸ report written to </span><span className="text-white">benchmark_report.md</span>
             </pre>
           </div>
@@ -354,9 +355,9 @@ function Terminal({ isDark }: { isDark: boolean }) {
         {/* KPI strip */}
         <div className="mt-8 grid grid-cols-3 gap-4">
           {[
-            { k: "5.9×", v: "faster than FP32 baseline" },
-            { k: "8.2 ms", v: "p99 tail latency (E2E)" },
-            { k: "0.992", v: "Box IoU vs FP32 baseline" },
+            { k: "6.6×", v: "faster than FP32 CPU baseline (yolov8n)" },
+            { k: "4.9 ms", v: "p99 tail latency, end-to-end" },
+            { k: "110 rows", v: "22 YOLO models × 5 backends, all measured" },
           ].map((m, i) => (
             <Reveal key={m.k} delay={i * 100}>
               <div className={`rounded-2xl p-5 border ${isDark ? "bg-white/[0.03] border-white/10" : "bg-white border-black/10"}`}>
@@ -423,7 +424,7 @@ function Benchmarks({ isDark }: { isDark: boolean }) {
             </h2>
             {data && (
               <p className={`mt-4 text-xs font-mono ${isDark ? "text-white/40" : "text-black/40"}`}>
-                {data.meta.host} • {data.meta.imgsz}px • {data.meta.warmup} warmup + {data.meta.iters} timed iters • generated {data.meta.generated}
+                {data.meta.host} • {entries.length} models × 5 backends • {data.meta.imgsz}px • {data.meta.warmup} warmup + {data.meta.iters} timed iters • {data.meta.power} • {data.meta.generated}
               </p>
             )}
           </div>
@@ -621,19 +622,19 @@ function ReportPreview({ isDark }: { isDark: boolean }) {
   const lines = [
     ["### ⚡ exportrace v0.1.0 — yolov8n.pt (640×640, batch=1)", "hl"],
     ["**Host:** macOS • Apple M5 Pro (15C, 24GB) • Power: AC connected", ""],
-    ["**Methodology:** 20 warmup, 100 timed iters • E2E = preprocess+inference+NMS", ""],
+    ["**Methodology:** 10 warmup, 50 timed iters • E2E = preprocess+inference+NMS", ""],
     ["", ""],
     ["| Backend | Precision | Unit | Med FPS | p99 | Peak RSS | Box IoU |", ""],
     ["| :--- | :--- | :--- | ---: | ---: | ---: | ---: |", "dim"],
-    ["| ONNX Runtime | FP32 | CoreML EP | 233.4 | 6.2 | 601 MB | 0.975 |", ""],
-    ["| PyTorch/MPS | FP16 | Apple GPU | 182.0 | 8.2 | 542 MB | 0.992 ★ |", "hl"],
-    ["| CoreML | FP16 | CPU+GPU+ANE | 128.1 | 10.3 | 596 MB | 0.963 |", ""],
-    ["| ONNX Runtime | FP32 | CPU | 60.3 | 27.0 | 569 MB | 1.000 |", ""],
-    ["| PyTorch | FP32 | CPU | 31.1 | 65.9 | 427 MB | 1.000 (base) |", ""],
+    ["| ONNX Runtime | FP32 | CoreML EP | 273.8 | 4.9 | 599 MB | 0.975 ★ |", "hl"],
+    ["| PyTorch/MPS | FP16 | Apple GPU | 268.3 | 4.5 | 537 MB | 0.992 |", ""],
+    ["| CoreML | FP16 | CPU+GPU+ANE | 150.4 | 7.6 | 611 MB | 0.963 |", ""],
+    ["| ONNX Runtime | FP32 | CPU (XNNPACK) | 71.8 | 15.5 | 590 MB | 1.000 |", ""],
+    ["| PyTorch | FP32 | CPU | 41.2 | 26.6 | 416 MB | 1.000 (base) |", ""],
     ["", ""],
-    ["> ✅ Winner: yolov8n.pt MPS FP16 — 5.9× faster, Box IoU 0.992, p99 8.2 ms", "hl"],
+    ["> ✅ Winner: yolov8n.pt CoreML EP — 6.6× faster, Box IoU 0.975, p99 4.9 ms", "hl"],
     ["", ""],
-    ["<details><summary>Copy standalone MPS inference code</summary>", "dim"],
+    ["<details><summary>Copy standalone CoreML EP inference code</summary>", "dim"],
   ];
   return (
     <section id="report" className="py-24 px-4">
